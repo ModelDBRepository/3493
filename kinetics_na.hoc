@@ -1,0 +1,167 @@
+load_file("nrngui.hoc")
+cvode.active(0)
+cvode.atol(1.e-4)
+create a
+a	{nseg=1 diam=5 L=5 
+	insert namot ena=50
+	insert pas g_pas=1/10000 Ra=150 cm=1}
+access a
+
+celsius=22
+tstop=20
+vlow=-120
+vhigh=20
+dt=0.01
+
+mtfac=1
+htfac=10
+
+objref gk, b,gt,vc, gs,c, gf,ic
+b = new VBox()
+c = new VBox()
+b.intercept(1)
+gk = new Graph(0)
+gk.view(vlow,0,vhigh-vlow,1,0,0,100,200)
+gk.exec_menu("New Axis")
+gk.exec_menu("10% Zoom out")
+gk.label(0.1,0.9,"Figs.3C-4B: steady-states")
+gk.addexpr("minf_namot",3,2, 2*tstop,0,2)
+gk.addexpr("hinf_namot",2,2, 2*tstop,0,2)
+
+gt = new Graph(0)
+gt.view(vlow,0,vhigh-vlow,1,0,0,100,200)
+gt.exec_menu("New Axis")
+gt.exec_menu("10% Zoom out")
+gt.label(0.1,0.9,"time constants (scale in ms)")
+gt.addexpr("mtau_namot/mtfac",3,2, 2*tstop,0,2)
+gt.addexpr("htau_namot/htfac",2,2, 2*tstop,0,2)
+
+xpanel("")
+xbutton("run ", "run()")
+xpanel()
+b.intercept(0)
+b.map("Na kinetics for rat motoneuron",100,0,200,400)
+
+c.intercept(1)
+gs = new Graph(0)
+gs.view(0,-6,tstop,6,0,0,100,200)
+gs.exec_menu("New Axis")
+gs.exec_menu("10% Zoom out")
+gs.label(0.1,0.9,"activation (pA), Fig.3A, step from -120mV")
+gs.exec_menu("Keep Lines")
+
+gf = new Graph(0)
+gf.view(0,-6,tstop,6,0,0,100,200)
+gf.exec_menu("New Axis")
+gf.exec_menu("10% Zoom out")
+gf.label(0.1,0.9,"inactivation (pA), Fig.4A, step to -30mV ")
+gf.exec_menu("Keep Lines")
+
+c.intercept(0)
+c.map("activation and inactivation",390,0,500,370)
+
+vc = new SEClamp(0.5)
+
+proc run() {
+gk.begin()
+for (v=vlow; v<vhigh; v=v+1) {
+    trates_namot(v)
+    gk.plot(v)
+}
+gk.flush()
+doNotify()
+
+gt.begin()
+gt.mark(-50,4.2/htfac,"+",12,6,2)
+gt.mark(-40,2.3/htfac,"+",12,6,2)
+gt.mark(-30,1.5/htfac,"+",12,6,2)
+gt.mark(-20,1.05/htfac,"+",12,6,2)
+gt.mark(-10,1/htfac,"+",12,6,2)
+gt.mark(0,0.9/htfac,"+",12,6,2)
+gt.mark(10,0.8/htfac,"+",12,6,2)
+gt.color(2)
+gt.label(0.1,0.2,"tau_inact./10")
+gt.color(3)
+gt.label(0.1,0.7,"tau_act.")
+for (v=vlow; v<vhigh; v=v+1) {
+    trates_namot(v)
+    gt.plot(v)
+}
+gt.flush()
+doNotify()
+
+gbar_namot=0.0003
+gs.color(4)
+gs.label(0.6,0.25,"-40")
+gs.color(1)
+gs.label(0.6,0.55,"-10")
+gs.color(2)
+gs.label(0.6,0.45,"-20")
+gs.color(3)
+gs.label(0.6,0.35,"-30")
+gs.color(5)
+gs.label(0.6,0.15,"-50")
+
+gs.begin()
+k=-10
+color=1
+while (k>-60) {
+gs.addexpr("ina*area(0.5)*10",color,1, 2*tstop,0,2) // *10=pA, *1e-2=nA
+t=0
+vc.amp1=-120
+vc.dur1=0.2
+vc.amp2=k
+vc.dur2=tstop
+forall {finitialize(vc.amp1)}
+while (t<tstop) {
+    fadvance()
+    gs.plot(t)
+    }
+gs.flush()
+doNotify()
+k=k-10
+color=color+1
+gs.begin()
+}
+
+vc.dur1=0
+vc.dur2=0
+vc.dur3=0
+
+gf.color(4)
+gf.label(0.6,0.25,"-100")
+gf.color(1)
+gf.label(0.6,0.55,"-50")
+gf.color(2)
+gf.label(0.6,0.45,"-60")
+gf.color(3)
+gf.label(0.6,0.35,"-80")
+gf.color(5)
+gf.label(0.6,0.15,"-120")
+
+k=-50
+color=1
+while (k>=-120) {
+gf.addexpr("ina*area(0.5)*10",color,1, 2*tstop,0,2) // *10=pA, *1e-2=nA
+t=0
+vc.amp1=k
+vc.dur1=2
+vc.amp2=-30
+vc.dur2=tstop
+forall {finitialize(k)}
+while (t<tstop) {
+    fadvance()
+    gf.plot(t)
+    }
+gf.flush()
+doNotify()
+if (k==-50) {k=k-10} else {k=k-20}
+color=color+1
+gf.begin()
+}
+vc.dur1=0
+vc.dur2=0
+vc.dur3=0
+}
+
+
